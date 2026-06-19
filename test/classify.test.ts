@@ -56,9 +56,9 @@ describe("classifyCommand", () => {
   });
 
   it("extracts a project-name hint for a session command", () => {
-    const c = cl("start a new session in my security-intelligence-platform directory");
+    const c = cl("start a new session in my acme-platform directory");
     expect(c.archetype).not.toBe("deliverable");
-    expect(c.dirHint).toBe("security-intelligence-platform");
+    expect(c.dirHint).toBe("acme-platform");
     expect(c.workingDir).toBeUndefined();
   });
 

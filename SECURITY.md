@@ -48,6 +48,26 @@ Switchboard assumes:
 The permission code was reviewed by a multi-agent adversarial pass; findings (including a
 symlink write-containment escape) were fixed with regression tests.
 
+## Known limitations (the classifier is not a sandbox)
+
+The permission policy gates tool use by **inspecting the command**, so it cannot see inside
+subprocesses, and it does not path-restrict reads (a coding agent legitimately needs to read
+files). Two consequences a prompt-injected *interactive* session could exploit:
+
+- **Interpreters / package managers bypass the write & egress checks.** `python -c '…'`,
+  `node -e '…'`, or `npm install <pkg>` run as a single approved Bash tool-use while the real
+  file and network actions happen inside the child process, invisible to the classifier.
+- **File reads are not path-restricted.** An agent can be steered to read `~/.ssh/id_rsa`,
+  `~/.aws/credentials`, or other local secrets; their contents go to the model provider and
+  may be summarized back into Signal/dashboard output.
+
+The Signal sender allowlist and the gating of consequential *actions* reduce the blast radius
+but do not eliminate this. **Mitigations:** run risky or untrusted work in the IronCurtain
+Docker sandbox (network-isolated, with a MITM egress allowlist); be cautious feeding
+prompt-injection-prone content (web pages, untrusted repos) to interactive sessions; unattended
+(deliverable/coordinated) sessions already escalate interpreters to `ask`. The planned fuller
+containment is an OS-level egress allowlist on agent processes.
+
 ## The dashboard is a control plane
 
 The dashboard is not a read-only viewer — it can kill sessions, decide approvals, and spawn

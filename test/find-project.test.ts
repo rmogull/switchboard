@@ -8,9 +8,9 @@ import { findProjectDir } from "../src/dispatcher/find-project.js";
 describe("findProjectDir", () => {
   it("finds an exact-name project directly under a root", () => {
     const root = mkdtempSync(join(tmpdir(), "sw-roots-"));
-    mkdirSync(join(root, "security-intelligence-platform"));
+    mkdirSync(join(root, "acme-platform"));
     mkdirSync(join(root, "other-thing"));
-    expect(findProjectDir("security-intelligence-platform", [root])).toBe(join(root, "security-intelligence-platform"));
+    expect(findProjectDir("acme-platform", [root])).toBe(join(root, "acme-platform"));
   });
 
   it("searches two levels deep and prefers an exact over a partial match", () => {

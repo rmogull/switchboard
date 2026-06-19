@@ -20,13 +20,13 @@ per-task session isolation so context never accumulates into one degrading conve
 
 Two canonical commands it must handle:
 
-1. **Deliverable.** "Create a presentation in the CSA template using the standard CSA
-   assets/icons on topic X, here's the outline, then put it in my Google Drive
+1. **Deliverable.** "Create a presentation in my deck template using the standard
+   assets/icons on topic X, here's the outline, then put it in my synced cloud
    presentations directory." → runs to completion unattended, notifies me, I review on
    my synced device and send feedback.
 2. **Interactive.** "Launch a remote Claude Code session for my
-   security-intelligence-platform so I can make some changes." → spins a live session in
-   an existing repo, hands me an attach path, I steer it from Prompt/Blink.
+   main project so I can make some changes." → spins a live session in
+   an existing repo, hands me an attach path, I steer it from a mobile terminal app.
 
 It must also handle **Codex** for both archetypes ("code this using Codex") and
 **multi-agent coordination** ("coordinate code and review between Claude Code and Codex,
@@ -67,8 +67,8 @@ with Claude Code making the final decision").
 
 ## 3. Host & environment
 
-- **Host:** my daily-driver Mac (not the Mac mini). Rationale: the tools the orchestrator
-  must integrate — Fantastical, Browserbase, Google Drive, CSA assets, user-level MCPs —
+- **Host:** my daily-driver Mac. Rationale: the tools the orchestrator
+  must integrate — calendar, browser automation, cloud storage, asset libraries, user-level MCPs —
   already live here. The dispatcher's safety comes from the vetted-input rule (Invariant
   2), not from network isolation, so isolating it would only break the tools and would
   force a large sensitive surface onto the clean mini. Trust boundary = the input
@@ -146,8 +146,8 @@ surfaces for explicit approval even when I command them.
 ### 5.2 Control plane — Signal
 
 - `signal-cli` running as a daemon on the Mac, registered to a **dedicated number**
-  (new Twilio number, separate from the security-intelligence-platform's number, so the
-  two systems' identities stay partitioned).
+  (a dedicated number from a provider like Twilio, separate from any existing automation's
+  number, so the two systems' identities stay partitioned).
 - **Hard sender allowlist = my personal number only.** Any message from any other sender
   is logged to the audit log and dropped, never parsed or interpreted.
 - This is a **command channel, not a monitored feed.** The dispatcher acts on explicit
@@ -178,7 +178,7 @@ experience for actual interactive work; the dashboard is a control plane, not a 
 
 | Archetype     | Lifetime   | Interaction              | Default for                         |
 |---------------|------------|--------------------------|-------------------------------------|
-| Deliverable   | Ephemeral  | Runs to completion, notifies | One-shot builds (the CSA deck)  |
+| Deliverable   | Ephemeral  | Runs to completion, notifies | One-shot builds (e.g. a deck)  |
 | Interactive   | Long-lived | Attach via tmux to steer | Live coding in a repo (the SIP)     |
 | Coordinated   | Ephemeral* | Notifies on convergence; attachable | Multi-agent implement/review |
 
@@ -220,7 +220,7 @@ canUseTool(tool, input, ctx):
 |----------------------------------------------------------|----------|
 | Read within session scope                                | allow    |
 | Write within the session's own working directory         | allow    |
-| Write outside working dir (incl. Google Drive folder)    | **ask**  |
+| Write outside working dir (incl. a synced cloud folder)    | **ask**  |
 | Delete (anything)                                        | **ask**  |
 | Network egress                                           | **ask**¹ |
 | Destructive shell (rm / mv outside dir / chmod / etc.)   | **ask**  |
@@ -374,7 +374,7 @@ Learning memory itself lives as markdown under `<home>/memory/` (e.g. `learnings
 
 ## 7. Core flows
 
-### 7.1 Deliverable — CSA deck → Drive
+### 7.1 Deliverable — build a deck → synced folder
 
 1. Signal command received from allowlisted sender; logged (`type=command`).
 2. Dispatcher classifies: deliverable, `claude`, new scratch dir, outputs to the synced
@@ -422,7 +422,7 @@ Learning memory itself lives as markdown under `<home>/memory/` (e.g. `learnings
   programmatic session spawn, and the `canUseTool` permission hook.
 - **Codex sessions:** official `codex` CLI driven as a subprocess in tmux, using its
   exec/headless + sandbox modes (validate contract in Phase 0).
-- **Messaging:** `signal-cli` (daemon/JSON-RPC mode), dedicated Twilio number.
+- **Messaging:** `signal-cli` (daemon/JSON-RPC mode), dedicated number (e.g. via Twilio).
 - **State:** SQLite (`better-sqlite3`).
 - **Interactive substrate:** tmux.
 - **Remote access:** Tailscale (`tailscale serve` for the dashboard; Tailscale SSH for
