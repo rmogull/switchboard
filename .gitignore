@@ -28,13 +28,10 @@ logs/
 .scratch/
 tmp/
 
-# Repo-local operational state (only matters if stateDir is set inside the repo — not
-# recommended; `init` also writes a `.gitignore` of its own inside stateDir).
-state/
-sessions/
-scratch/
-worktrees/
-learned-rules.json
+# Repo-local operational state (only if stateDir is set inside the repo — not recommended;
+# `init` writes a `.gitignore` of its own inside stateDir, which is the real protection).
+# NOTE: deliberately NOT ignoring bare `state/`, `sessions/`, `scratch/`, `worktrees/` —
+# those patterns would also match source dirs like `src/state/`.
 *.sqlite
 *.sqlite-shm
 *.sqlite-wal
