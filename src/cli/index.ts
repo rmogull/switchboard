@@ -142,6 +142,10 @@ program
       mkdirSync(d, { recursive: true, mode: 0o700 });
       try { chmodSync(d, 0o700); } catch { /* not owner / not chmod-able */ }
     }
+    // Belt-and-suspenders: if stateDir ever lives inside a git work tree, make its
+    // operational contents (db, sessions, scratch, worktrees, learned rules) impossible
+    // to accidentally commit.
+    try { writeFileSync(join(cfg.stateDir, ".gitignore"), "*\n"); } catch { /* ignore */ }
 
     // Initialize the database (applies the schema idempotently).
     const store = new Store(cfg.dbPath);

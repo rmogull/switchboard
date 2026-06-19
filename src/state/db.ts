@@ -3,6 +3,7 @@ import type DB from "better-sqlite3";
 import type { Clock } from "../core/clock.js";
 import { systemClock } from "../core/clock.js";
 import { openDatabase } from "../core/native-check.js";
+import { chmodFile600 } from "../core/perms.js";
 import { SCHEMA_SQL } from "./schema-sql.js";
 import { AuditRepo } from "./repositories/audit.js";
 import { SessionRepo } from "./repositories/sessions.js";
@@ -36,6 +37,7 @@ export class Store {
     // yields a friendly rebuild remedy via openDatabase rather than a raw crash — see
     // native-check.ts. (require() alone wouldn't surface it; the addon loads here.)
     this.db = openDatabase(dbPath);
+    if (dbPath !== ":memory:") chmodFile600(dbPath); // the DB holds approvals, transcripts, audit
     this.db.pragma("journal_mode = WAL");
     this.db.pragma("foreign_keys = ON");
     this.db.pragma("busy_timeout = 5000");

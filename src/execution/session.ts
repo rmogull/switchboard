@@ -1,4 +1,5 @@
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
+import { chmodDir700, chmodFile600 } from "../core/perms.js";
 import { homedir } from "node:os";
 import { join } from "node:path";
 
@@ -182,6 +183,7 @@ export class SessionManager {
     // Ad-hoc / deliverable: an isolated scratch dir under the (non-synced) state dir.
     const dir = join(this.cfg.stateDir, "scratch", id);
     mkdirSync(dir, { recursive: true });
+    chmodDir700(dir);
     return dir;
   }
 
@@ -279,7 +281,10 @@ export class SessionManager {
     if (req.task) {
       const sdir = join(this.cfg.stateDir, "sessions", id);
       mkdirSync(sdir, { recursive: true });
-      writeFileSync(join(sdir, "task.md"), req.task);
+      chmodDir700(sdir);
+      const taskMd = join(sdir, "task.md");
+      writeFileSync(taskMd, req.task);
+      chmodFile600(taskMd);
     }
 
     try {

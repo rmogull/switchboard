@@ -5,6 +5,7 @@ import type { ResolvedConfig } from "./config/index.js";
 import { createLogger, type Logger } from "./core/logger.js";
 import { resolveBinary } from "./core/deps.js";
 import { expandHome } from "./core/paths.js";
+import { chmodDir700 } from "./core/perms.js";
 import { Store } from "./state/db.js";
 import { Tmux, defaultTmuxConfig } from "./execution/tmux.js";
 import { SessionManager } from "./execution/session.js";
@@ -65,6 +66,7 @@ export interface Runtime {
  */
 export function createRuntime(cfg: ResolvedConfig, log: Logger = createLogger()): Runtime {
   mkdirSync(dirname(cfg.dbPath), { recursive: true });
+  chmodDir700(dirname(cfg.dbPath)); // stateDir holds the control DB + transcripts
   const store = new Store(cfg.dbPath);
 
   // Lock onto the live tmux server's socket dir so reconcile sees reality
@@ -73,6 +75,7 @@ export function createRuntime(cfg: ResolvedConfig, log: Logger = createLogger())
   const socket = cfg.tmux.socket;
   const tmuxTmpdir = resolveTmuxTmpdir(cfg.stateDir, socket, socket === DEFAULT_TMUX_SOCKET);
   mkdirSync(tmuxTmpdir, { recursive: true });
+  chmodDir700(tmuxTmpdir);
   process.env.TMUX_TMPDIR = tmuxTmpdir;
 
   // Resolve the tmux config file: user-provided, or write the bundled default.

@@ -23,11 +23,12 @@
   },
 
   "dashboard": {
-    "$comment": "Localhost-bound control plane (it can kill sessions, decide approvals, spawn sandboxed sessions). `token` is a bearer token required on every /api route; it is MANDATORY (the server refuses to start) when exposed beyond loopback — a non-loopback bindAddress OR tailscale.serve. `init` generates one. Then open the dashboard once as https://<host>/?token=<token>. Reach it via `tailscale serve` on your tailnet, NEVER a public port and NEVER `tailscale funnel`; any tailnet device with the token is a full operator.",
+    "$comment": "Localhost-bound control plane (it can kill sessions, decide approvals, spawn sandboxed sessions). `token` is a bearer token required on every /api route. It is MANDATORY — the server refuses to start without one, because an unauthenticated localhost service is CSRF-able by any web page you visit. `init` generates one; then open the dashboard once as https://<host>/?token=<token> (cross-site requests are also blocked). Reach it via `tailscale serve` on your tailnet, NEVER a public port and NEVER `tailscale funnel`; any tailnet device with the token is a full operator. Set allowInsecureNoToken:true ONLY for throwaway local dev.",
     "enabled": true,
     "port": 8765,
     "bindAddress": "127.0.0.1",
-    "token": ""
+    "token": "",
+    "allowInsecureNoToken": false
   },
 
   "tailscale": {

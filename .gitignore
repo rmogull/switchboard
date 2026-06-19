@@ -28,6 +28,17 @@ logs/
 .scratch/
 tmp/
 
+# Repo-local operational state (only matters if stateDir is set inside the repo — not
+# recommended; `init` also writes a `.gitignore` of its own inside stateDir).
+state/
+sessions/
+scratch/
+worktrees/
+learned-rules.json
+*.sqlite
+*.sqlite-shm
+*.sqlite-wal
+
 # macOS
 .DS_Store
 

@@ -1,4 +1,4 @@
-import { existsSync, mkdirSync, writeFileSync, rmSync, realpathSync } from "node:fs";
+import { existsSync, mkdirSync, writeFileSync, rmSync, realpathSync, statSync } from "node:fs";
 import { homedir } from "node:os";
 import { dirname, join } from "node:path";
 
@@ -6,6 +6,29 @@ import type { ResolvedConfig } from "../config/index.js";
 import { DependencyError, SwitchboardError } from "../core/errors.js";
 import { packageRoot } from "../core/self-invoke.js";
 import { checkNativeModule } from "../core/native-check.js";
+import { chmodDir700, chmodFile600 } from "../core/perms.js";
+
+/**
+ * Build a safe PATH for the launchd plist. The daemon inherits this PATH and resolves
+ * claude/codex/tmux/signal-cli/git via it, so a WORLD-writable or relative dir early in
+ * the installer's ambient PATH could let a planted binary impersonate an "official" CLI.
+ * Drop empty/relative/nonexistent/world-writable entries; fall back to the standard dirs.
+ */
+function sanitizePath(raw: string | undefined): string {
+  const fallback = "/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin";
+  const seen = new Set<string>();
+  const safe = (raw ?? fallback).split(":").filter((d) => {
+    if (!d || !d.startsWith("/") || seen.has(d)) return false; // empty / relative / dupe
+    seen.add(d);
+    try {
+      const st = statSync(d);
+      return st.isDirectory() && (st.mode & 0o002) === 0; // exists, not world-writable
+    } catch {
+      return false; // nonexistent
+    }
+  });
+  return (safe.length ? safe : fallback.split(":")).join(":");
+}
 import { run } from "../execution/exec.js";
 import { renderPlist, type PlistOptions } from "./plist.js";
 
@@ -53,7 +76,7 @@ export function buildPlistOptions(
   }
 
   const env: Record<string, string> = {
-    PATH: process.env.PATH ?? "/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin",
+    PATH: sanitizePath(process.env.PATH),
     HOME: process.env.HOME ?? homedir(),
     SWITCHBOARD_HOME: cfg.home,
   };
@@ -110,8 +133,11 @@ export async function installDaemon(
   const dest = plistPath(label);
 
   mkdirSync(dirname(dest), { recursive: true });
-  mkdirSync(join(cfg.stateDir, "logs"), { recursive: true });
+  const logsDir = join(cfg.stateDir, "logs");
+  mkdirSync(logsDir, { recursive: true });
+  chmodDir700(logsDir); // logs can contain transcript fragments + Signal sender numbers
   writeFileSync(dest, renderPlist(plOpts));
+  chmodFile600(dest);
 
   const domain = launchctlDomainTarget();
   // Replace any prior instance. bootout is asynchronous — wait for the service to

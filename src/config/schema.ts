@@ -34,13 +34,15 @@ const dashboardConfig = z.object({
   /** Bind localhost only; reach it remotely via `tailscale serve`, never a public port. */
   bindAddress: z.string().default("127.0.0.1"),
   /**
-   * Bearer token required on every `/api` route. The dashboard REFUSES to start when
-   * it is exposed beyond loopback (a non-loopback `bindAddress` or `tailscale.serve`)
-   * without one — any device that can reach the port is otherwise a full operator
-   * (it can kill sessions, decide approvals, spawn sandboxed sessions). `init`
-   * generates one; open the dashboard once as `https://<host>/?token=<token>`.
+   * Bearer token required on every `/api` route. MANDATORY — the dashboard refuses to
+   * start without one, because an unauthenticated localhost control plane is CSRF-able by
+   * any web page the operator visits (it can kill sessions, decide approvals, spawn
+   * sandboxed sessions). `init` generates one; open the dashboard once as
+   * `https://<host>/?token=<token>`.
    */
   token: z.string().optional(),
+  /** Escape hatch to run the dashboard WITHOUT a token (CSRF-exposed). Dev only; not recommended. */
+  allowInsecureNoToken: z.boolean().default(false),
 });
 
 const tailscaleConfig = z.object({

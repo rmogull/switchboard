@@ -16,7 +16,7 @@ const log = createLogger("error");
 const tmux = new Tmux({ socket: "switchboard-dash-test" });
 const cfg = {
   tmux: { sessionPrefix: "sw" },
-  dashboard: { enabled: true, port: 0, bindAddress: "127.0.0.1" },
+  dashboard: { enabled: true, port: 0, bindAddress: "127.0.0.1", allowInsecureNoToken: true },
 } as unknown as ResolvedConfig;
 
 let server: DashboardServer | undefined;
@@ -348,6 +348,35 @@ describe("DashboardServer — auth (bearer token)", () => {
     const s = new DashboardServer({ store, sessions, tmux, cfg: served, log });
     await expect(s.start()).rejects.toThrow(/token/i);
     await s.stop();
+  });
+
+  it("refuses to start on plain loopback without a token (mandatory; CSRF defense), unless allowInsecureNoToken", async () => {
+    const store = memoryStore();
+    const sessions = new SessionManager(store, tmux, cfg, log);
+    const noTok = { tmux: { sessionPrefix: "sw" }, dashboard: { enabled: true, port: 0, bindAddress: "127.0.0.1" } } as unknown as ResolvedConfig;
+    const s = new DashboardServer({ store, sessions, tmux, cfg: noTok, log });
+    await expect(s.start()).rejects.toThrow(/token/i);
+    await s.stop();
+    const ok = { tmux: { sessionPrefix: "sw" }, dashboard: { enabled: true, port: 0, bindAddress: "127.0.0.1", allowInsecureNoToken: true } } as unknown as ResolvedConfig;
+    const s2 = new DashboardServer({ store, sessions, tmux, cfg: ok, log });
+    await expect(s2.start()).resolves.toBeTruthy();
+    await s2.stop();
+  });
+
+  it("blocks cross-site mutating requests (CSRF) but allows same-site", async () => {
+    const store = memoryStore();
+    store.sessions.create({ id: "csrf1", client: "claude", mode: "deliverable", workingDir: "/w", status: "running" });
+    const sessions = new SessionManager(store, tmux, authCfg, log);
+    server = new DashboardServer({ store, sessions, tmux, cfg: authCfg, log });
+    const { port } = await server.start();
+    const base = `http://127.0.0.1:${port}`;
+    const auth = { authorization: "Bearer s3cret-token-value" };
+    // Cross-site POST is blocked even WITH the token (Sec-Fetch-Site: cross-site).
+    const cross = await fetch(`${base}/api/sessions/csrf1/kill`, { method: "POST", headers: { ...auth, "sec-fetch-site": "cross-site" } });
+    expect(cross.status).toBe(403);
+    // A same-origin POST passes the CSRF gate (not 403).
+    const same = await fetch(`${base}/api/sessions/csrf1/kill`, { method: "POST", headers: { ...auth, "sec-fetch-site": "same-origin" } });
+    expect(same.status).not.toBe(403);
   });
 
   it("treats a hostname bindAddress (e.g. 127.evil.com) as exposed — refuses without a token", async () => {

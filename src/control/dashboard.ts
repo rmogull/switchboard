@@ -1,6 +1,5 @@
 import { createServer, type IncomingMessage, type Server, type ServerResponse } from "node:http";
 import { timingSafeEqual } from "node:crypto";
-import { isIP } from "node:net";
 
 import type { ResolvedConfig } from "../config/index.js";
 import type { Logger } from "../core/logger.js";
@@ -39,17 +38,17 @@ export class DashboardServer {
 
   start(): Promise<{ address: string; port: number }> {
     const { cfg } = this.deps;
-    // Refuse to expose an unauthenticated control plane. When bound beyond loopback
-    // (or served on the tailnet), a token is mandatory — any reachable device could
-    // otherwise kill sessions, decide approvals, and spawn sandboxed sessions.
-    const loopback = isLoopbackAddress(cfg.dashboard.bindAddress);
-    if ((!loopback || cfg.tailscale?.serve === true) && !cfg.dashboard.token) {
+    // The dashboard is a mutating control plane. An UNAUTHENTICATED localhost service is
+    // CSRF-exploitable by any web page the operator visits (blind POSTs to 127.0.0.1), so
+    // a token is mandatory even on loopback — not only when exposed via tailscale serve.
+    if (!cfg.dashboard.token && !cfg.dashboard.allowInsecureNoToken) {
       return Promise.reject(
         new SwitchboardError(
           "dashboard_insecure",
-          `Refusing to start the dashboard exposed (${!loopback ? `bindAddress=${cfg.dashboard.bindAddress}` : "tailscale.serve=true"}) with no dashboard.token set. ` +
-            "Any device that can reach it would be a full operator. Set dashboard.token (run `switchboard init` to generate one), " +
-            "or bind 127.0.0.1 with tailscale.serve=false. NEVER expose it with `tailscale funnel`.",
+          "Refusing to start the dashboard without dashboard.token. It is a mutating control plane and an " +
+            "unauthenticated localhost service can be driven by any web page you visit (CSRF). Run `switchboard init` " +
+            "to generate a token, set dashboard.token, or set dashboard.allowInsecureNoToken=true to override (NOT " +
+            "recommended). NEVER expose it with `tailscale funnel`.",
         ),
       );
     }
@@ -114,6 +113,21 @@ export class DashboardServer {
     return a.length === b.length && timingSafeEqual(a, b);
   }
 
+  /** True if a mutating request looks cross-site (CSRF). Conservative: allow when unknown. */
+  private isCrossSite(req: IncomingMessage): boolean {
+    const sfs = req.headers["sec-fetch-site"];
+    if (typeof sfs === "string") return sfs === "cross-site" || sfs === "same-site";
+    const origin = req.headers["origin"];
+    if (typeof origin === "string" && origin) {
+      try {
+        return new URL(origin).host !== req.headers["host"];
+      } catch {
+        return true;
+      }
+    }
+    return false; // no Origin (curl/native clients, same-origin navigations) → allow
+  }
+
   private async handle(req: IncomingMessage, res: ServerResponse): Promise<void> {
     const url = new URL(req.url ?? "/", `http://localhost`);
     const path = url.pathname;
@@ -123,6 +137,13 @@ export class DashboardServer {
     // GET "/" (the static shell) is exempt so the page can bootstrap and read ?token=.
     if (path.startsWith("/api/") && !this.authed(req, url)) {
       return this.json(res, 401, { error: "unauthorized" });
+    }
+
+    // CSRF defense: reject cross-site MUTATING requests (a blind POST from a web page the
+    // operator happens to visit). Modern browsers send Sec-Fetch-Site; non-browser clients
+    // (curl) send no Origin and are allowed.
+    if (method !== "GET" && method !== "HEAD" && path.startsWith("/api/") && this.isCrossSite(req)) {
+      return this.json(res, 403, { error: "cross-site request blocked" });
     }
 
     if (method === "GET" && path === "/") {
@@ -369,20 +390,6 @@ export class DashboardServer {
 
     this.json(res, 404, { error: "not found" });
   }
-}
-
-function isLoopbackAddress(addr: string): boolean {
-  if (addr === "localhost") return true;
-  // Only a PARSED loopback IP is safe. A hostname (isIP === 0) such as "127.evil.com"
-  // is not loopback — server.listen() accepts hostnames and DNS could resolve it
-  // off-box, so it must require a token.
-  const kind = isIP(addr);
-  if (kind === 4) return addr.startsWith("127.");
-  if (kind === 6) {
-    const a = addr.toLowerCase();
-    return a === "::1" || a.startsWith("::ffff:127.");
-  }
-  return false;
 }
 
 function safeParse(s: string): unknown {
