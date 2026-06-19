@@ -1,0 +1,76 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        node: ["22", "24"]
+    steps:
+      - uses: actions/checkout@v4
+
+      # A few tests drive the real tmux/git binaries; git is preinstalled.
+      - name: Install tmux
+        run: sudo apt-get update && sudo apt-get install -y tmux
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ matrix.node }}
+          cache: npm
+
+      - run: npm ci
+      - run: npm run typecheck
+      - run: npm test
+      - run: npm run build
+
+  macos-smoke:
+    # The shipped platform: macOS on the pinned Node major. This is the ONLY job that
+    # exercises the native better-sqlite3 build on macOS, the real first-run path
+    # (init + doctor), and the forced-ABI doctor remedy — none of which the Linux job
+    # touches. It guards the Node/ABI install landmine the whole release is built around.
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install tmux
+        run: brew install tmux
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "26"
+          cache: npm
+
+      - run: npm ci
+      - run: npm run typecheck
+      - run: npm test
+      - run: npm run build
+
+      - name: First-run smoke (init + doctor on the pinned Node)
+        run: |
+          cat > "$RUNNER_TEMP/sb.json" <<EOF
+          { "home": "$RUNNER_TEMP/home", "stateDir": "$RUNNER_TEMP/state", "dbPath": "$RUNNER_TEMP/state/sb.db", "signal": { "enabled": false }, "clients": { "claude": { "enabled": false }, "codex": { "enabled": false } }, "dashboard": { "enabled": true, "port": 8765, "bindAddress": "127.0.0.1", "token": "ci-token" } }
+          EOF
+          node dist/cli/index.js init -c "$RUNNER_TEMP/sb.json"
+          node dist/cli/index.js doctor -c "$RUNNER_TEMP/sb.json"
+
+      - name: Forced-ABI doctor remedy (must exit non-zero with a rebuild hint, no raw stack)
+        run: |
+          F=$(find node_modules/better-sqlite3 -name "*.node" | head -1)
+          mv "$F" "$F.bak"
+          set +e
+          node dist/cli/index.js doctor -c "$RUNNER_TEMP/sb.json" > out.txt 2>&1
+          CODE=$?
+          set -e
+          mv "$F.bak" "$F"
+          echo "--- doctor output (native module hidden) ---"
+          cat out.txt
+          test "$CODE" -ne 0 || { echo "FAIL: doctor should have exited non-zero"; exit 1; }
+          grep -q "npm rebuild better-sqlite3" out.txt || { echo "FAIL: missing rebuild remedy"; exit 1; }
+          if grep -q "NODE_MODULE_VERSION" out.txt; then echo "FAIL: leaked raw native error"; exit 1; fi
+          echo "OK: doctor degraded gracefully with the rebuild remedy"

@@ -1,0 +1,12 @@
+{
+  "$comment": "Throwaway profile for testing Switchboard on the SAME machine as a production install WITHOUT colliding with it. Pass with `-c switchboard.config.test.json` (or SWITCHBOARD_CONFIG). Foreground only; NEVER run `install-daemon` with this — the install-daemon guard refuses a non-default tmux.socket anyway. Signal/IronCurtain/Tailscale are disabled and the tmux socket + state dirs are isolated so nothing touches the production daemon, account, or panes.",
+  "home": "/tmp/switchboard-test/home",
+  "stateDir": "/tmp/switchboard-test/state",
+  "dbPath": "/tmp/switchboard-test/state/switchboard.db",
+  "clients": { "claude": { "enabled": true }, "codex": { "enabled": false } },
+  "signal": { "enabled": false },
+  "ironcurtain": { "enabled": false },
+  "tailscale": { "serve": false },
+  "dashboard": { "enabled": true, "port": 8766, "bindAddress": "127.0.0.1" },
+  "tmux": { "socket": "switchboard-test" }
+}

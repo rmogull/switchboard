@@ -1,0 +1,41 @@
+# Dependencies
+node_modules/
+
+# Build output
+dist/
+*.tsbuildinfo
+
+# Runtime state — never commit the live database or its WAL sidecars
+*.db
+*.db-shm
+*.db-wal
+switchboard.db*
+
+# Local configuration & secrets (committed as *.example.* instead)
+switchboard.config.json
+.env
+.env.*
+!.env.example
+config/local.*
+
+# signal-cli account data / Tailscale state — never leaves the host
+signal-data/
+*.signal
+
+# Logs & scratch
+logs/
+*.log
+.scratch/
+tmp/
+
+# macOS
+.DS_Store
+
+# Editor
+.vscode/
+.idea/
+*.swp
+
+# Phase 0 export cruft
+specification/mnt/
+specification/.DS_Store

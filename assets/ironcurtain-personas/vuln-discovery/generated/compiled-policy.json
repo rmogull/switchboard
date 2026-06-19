@@ -1,0 +1,132 @@
+{
+  "generatedAt": "2026-06-17T00:00:00.000Z",
+  "constitutionHash": "ad2ead588d2b8aa6f869ff6ff8d27ce027da53859ebc5b474b1df9bee7c34e6c",
+  "inputHash": "handauthored-vuln-discovery-v1",
+  "rules": [
+    {
+      "name": "allow-fs-read",
+      "description": "Allow reading files anywhere (recon's core function).",
+      "principle": "The analyst may read filesystem contents to perform recon.",
+      "if": { "server": ["filesystem"], "roles": ["read-path"] },
+      "then": "allow",
+      "reason": "Reading is low-risk in a network-isolated sandbox; it is the analyst's core function."
+    },
+    {
+      "name": "allow-git-read",
+      "description": "Allow reading git history (status/log/diff/blame/show/reflog).",
+      "principle": "The analyst may read repository history to triage vulnerabilities.",
+      "if": { "server": ["git"], "roles": ["read-path"] },
+      "then": "allow",
+      "reason": "Git history reads are read-only and central to vulnerability triage."
+    },
+    {
+      "name": "allow-git-branch-name",
+      "description": "Allow git operations that reference a branch name (a benign identifier).",
+      "principle": "Naming a branch is not itself a privileged action.",
+      "if": { "server": ["git"], "roles": ["branch-name"] },
+      "then": "allow",
+      "reason": "A branch name is a benign identifier; risk lives in network/history roles, gated separately."
+    },
+    {
+      "name": "allow-git-commit-message",
+      "description": "Allow git operations that carry a commit message (benign content).",
+      "principle": "A commit message is benign text content.",
+      "if": { "server": ["git"], "roles": ["commit-message"] },
+      "then": "allow",
+      "reason": "A commit message is benign; the history-write itself is gated by the write-history role."
+    },
+    {
+      "name": "allow-web-search",
+      "description": "Allow web_search (no URL is fetched; results are search hits).",
+      "principle": "The analyst may search the web for vulnerability information.",
+      "if": { "server": ["fetch"], "tool": ["web_search"] },
+      "then": "allow",
+      "reason": "web_search returns search results without fetching attacker-controlled page content."
+    },
+    {
+      "name": "allow-fetch-recon-domains",
+      "description": "Allow http_fetch to the curated security-recon domain allowlist.",
+      "principle": "The analyst may fetch from trusted security research sources.",
+      "if": {
+        "server": ["fetch"],
+        "tool": ["http_fetch"],
+        "domains": { "roles": ["fetch-url"], "allowed": ["@security-recon-domains"] }
+      },
+      "then": "allow",
+      "reason": "Curated NVD/CVE/MITRE/OSV/CISA/exploit-db/OWASP/registry sources are trusted recon inputs."
+    },
+    {
+      "name": "escalate-fetch-other-urls",
+      "description": "Escalate http_fetch to any domain not on the recon allowlist.",
+      "principle": "Human oversight: fetching off-allowlist domains is the exfiltration boundary.",
+      "if": { "server": ["fetch"], "tool": ["http_fetch"] },
+      "then": "escalate",
+      "reason": "An off-allowlist fetch is the indirect-prompt-injection / exfiltration boundary — a human must approve the destination."
+    },
+    {
+      "name": "escalate-fs-write",
+      "description": "Escalate filesystem writes outside the sandbox workspace.",
+      "principle": "Human oversight: writing outside the workspace leaves the sandbox's reach.",
+      "if": { "server": ["filesystem"], "roles": ["write-path"] },
+      "then": "escalate",
+      "reason": "Writes inside the workspace are structurally allowed; writes outside it require human approval."
+    },
+    {
+      "name": "escalate-fs-delete",
+      "description": "Escalate filesystem deletes/moves outside the sandbox workspace.",
+      "principle": "Human oversight: deleting outside the workspace is destructive.",
+      "if": { "server": ["filesystem"], "roles": ["delete-path"] },
+      "then": "escalate",
+      "reason": "Deletes inside the workspace are structurally allowed; deletes outside it require human approval."
+    },
+    {
+      "name": "escalate-git-write-path",
+      "description": "Escalate git operations that write paths outside the sandbox workspace.",
+      "principle": "Human oversight: git writes outside the workspace leave the sandbox's reach.",
+      "if": { "server": ["git"], "roles": ["write-path"] },
+      "then": "escalate",
+      "reason": "Git write-paths inside the workspace are structurally allowed; outside it requires human approval."
+    },
+    {
+      "name": "escalate-git-delete-path",
+      "description": "Escalate git operations that delete paths outside the sandbox workspace.",
+      "principle": "Human oversight: git deletes outside the workspace are destructive.",
+      "if": { "server": ["git"], "roles": ["delete-path"] },
+      "then": "escalate",
+      "reason": "Git delete-paths inside the workspace are structurally allowed; outside it requires human approval."
+    },
+    {
+      "name": "escalate-git-write-history",
+      "description": "Escalate git history mutations (commit/merge/rebase/reset/...) outside the workspace.",
+      "principle": "Human oversight: rewriting history outside the workspace is consequential.",
+      "if": { "server": ["git"], "roles": ["write-history"] },
+      "then": "escalate",
+      "reason": "History writes inside the workspace are structurally allowed; outside it requires human approval."
+    },
+    {
+      "name": "escalate-git-delete-history",
+      "description": "Escalate git history deletions (branch -D, stash drop, tag -d, ...) outside the workspace.",
+      "principle": "Human oversight: deleting history outside the workspace is destructive.",
+      "if": { "server": ["git"], "roles": ["delete-history"] },
+      "then": "escalate",
+      "reason": "History deletes inside the workspace are structurally allowed; outside it requires human approval."
+    },
+    {
+      "name": "escalate-git-remote-url",
+      "description": "Escalate every git network operation (fetch/pull/push/clone) and remote config.",
+      "principle": "Human oversight: git network egress and remote redirection require approval.",
+      "if": { "server": ["git"], "roles": ["git-remote-url"] },
+      "then": "escalate",
+      "reason": "Git network ops egress data and git_remote rewrites redirect future egress — a human must approve."
+    }
+  ],
+  "listDefinitions": [
+    {
+      "name": "security-recon-domains",
+      "type": "domains",
+      "principle": "The analyst may fetch web content from curated security research sources.",
+      "generationPrompt": "Hand-authored: NVD/CVE/MITRE/CWE/CAPEC/ATT&CK, OSV, CISA, exploit-db, OWASP, FIRST/CVSS, vendor advisory trackers (Red Hat/Debian/Ubuntu/Rapid7/Tenable/Snyk/VulDB), Openwall/Packetstorm/SecLists, and package registries (PyPI/npm/RubyGems/crates.io/Go/Maven/Packagist/NuGet). See generated/dynamic-lists.json for resolved values.",
+      "requiresMcp": false
+    }
+  ]
+}

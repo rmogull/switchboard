@@ -1,0 +1,46 @@
+{
+  "generatedAt": "2026-06-17T00:00:00.000Z",
+  "lists": {
+    "security-recon-domains": {
+      "values": [
+        "nvd.nist.gov", "*.nvd.nist.gov",
+        "nist.gov", "*.nist.gov",
+        "cve.org", "*.cve.org",
+        "cve.mitre.org",
+        "mitre.org", "*.mitre.org",
+        "first.org", "*.first.org",
+        "exploit-db.com", "*.exploit-db.com",
+        "owasp.org", "*.owasp.org",
+        "osv.dev", "*.osv.dev",
+        "cisa.gov", "*.cisa.gov",
+        "github.com", "*.github.com",
+        "githubusercontent.com", "*.githubusercontent.com",
+        "snyk.io", "*.snyk.io",
+        "cvedetails.com", "*.cvedetails.com",
+        "vuldb.com", "*.vuldb.com",
+        "rapid7.com", "*.rapid7.com",
+        "tenable.com", "*.tenable.com",
+        "redhat.com", "*.redhat.com",
+        "debian.org", "*.debian.org",
+        "ubuntu.com", "*.ubuntu.com",
+        "openwall.com", "*.openwall.com",
+        "seclists.org", "*.seclists.org",
+        "packetstormsecurity.com", "*.packetstormsecurity.com",
+        "pypi.org", "*.pypi.org",
+        "npmjs.com", "*.npmjs.com",
+        "npmjs.org", "*.npmjs.org",
+        "rubygems.org", "*.rubygems.org",
+        "crates.io", "*.crates.io",
+        "go.dev", "*.go.dev",
+        "maven.org", "*.maven.org",
+        "mvnrepository.com", "*.mvnrepository.com",
+        "packagist.org", "*.packagist.org",
+        "nuget.org", "*.nuget.org"
+      ],
+      "manualAdditions": [],
+      "manualRemovals": [],
+      "resolvedAt": "2026-06-17T00:00:00.000Z",
+      "inputHash": "handauthored-vuln-discovery-recon-domains-v1"
+    }
+  }
+}

@@ -1,0 +1,101 @@
+{
+  "$comment": "Copy to switchboard.config.json and edit. switchboard.config.json is gitignored — nothing in src/ carries personal facts, they all live here. The SWITCHBOARD_HOME env var overrides `home`. Unknown keys (including every `$comment*` field below) are ignored by the loader, so this file is self-documenting. Every key the schema accepts is shown here with a safe placeholder.",
+
+  "home": "~/.switchboard",
+
+  "$comment_stateDir": "Operational state (db, scratch, sessions, logs, tmux config, learned rules). Defaults to <home>/switchboard. Set this OUTSIDE home when home is an iCloud/Dropbox-synced folder — a live SQLite WAL DB and git coordination scratch must NOT be sync-managed (corruption/eviction).",
+  "stateDir": "~/Library/Application Support/switchboard",
+
+  "$comment_dbPath": "SQLite state file. Defaults to <stateDir>/switchboard.db. Override only to relocate the database itself.",
+  "dbPath": "~/Library/Application Support/switchboard/switchboard.db",
+
+  "clients": {
+    "$comment": "Enable/disable each CLI and optionally pin its binary path (resolved from PATH when omitted). codex is optional for Claude-only installs, but REQUIRED for the `coordinate` (Claude-implements/Codex-reviews) flow.",
+    "claude": { "enabled": true },
+    "codex": { "enabled": true }
+  },
+
+  "signal": {
+    "$comment": "Stays disabled until you register a dedicated number with signal-cli. `account` is that registered number (E.164); `allowlist` is the ONLY senders allowed to command the system (Invariant 2). See the README Prerequisites for how to OBTAIN a dedicated number (Twilio / Google Voice / second SIM).",
+    "enabled": false,
+    "account": "+1XXXXXXXXXX",
+    "allowlist": ["+1XXXXXXXXXX"]
+  },
+
+  "dashboard": {
+    "$comment": "Localhost-bound control plane (it can kill sessions, decide approvals, spawn sandboxed sessions). `token` is a bearer token required on every /api route; it is MANDATORY (the server refuses to start) when exposed beyond loopback — a non-loopback bindAddress OR tailscale.serve. `init` generates one. Then open the dashboard once as https://<host>/?token=<token>. Reach it via `tailscale serve` on your tailnet, NEVER a public port and NEVER `tailscale funnel`; any tailnet device with the token is a full operator.",
+    "enabled": true,
+    "port": 8765,
+    "bindAddress": "127.0.0.1",
+    "token": ""
+  },
+
+  "tailscale": {
+    "$comment": "The macOS GUI app ships the CLI at the binPath below (not on PATH). `serve` exposes the dashboard on your tailnet only.",
+    "binPath": "/Applications/Tailscale.app/Contents/MacOS/Tailscale",
+    "serve": false
+  },
+
+  "tmux": {
+    "$comment": "`socket` is the tmux server name (tmux -L <socket>). Leave the default unless you run a SECOND Switchboard profile on this machine (e.g. switchboard.config.test.json) — it MUST use a distinct socket so it never shares, reconciles against, or kills the production tmux panes.",
+    "sessionPrefix": "sw",
+    "historyLimit": 50000,
+    "socket": "switchboard"
+  },
+
+  "approvals": {
+    "$comment": "How long a blocking tool call waits for an out-of-band (Signal/dashboard) decision, and the fail-closed default (an unanswered approval denies).",
+    "timeoutMs": 120000,
+    "onTimeout": "deny"
+  },
+
+  "retention": {
+    "$comment": "Purge TERMINAL sessions (done/failed/killed) older than sessionDays, with their scratch/transcript/steering rows. The append-only audit_log is always preserved. Active sessions are never aged out. Set 0 to disable retention.",
+    "sessionDays": 30
+  },
+
+  "attach": {
+    "$comment": "Remote phone/laptop attach to interactive sessions. `sshHost` is your Mac over the tailnet (e.g. user@host.tailnet.ts.net); unset → attach emits only a bare LOCAL tmux command. `transport` mosh survives phone sleep/roaming (needs mosh-server); use ssh for clients without mosh (Termius, JuiceSSH, Windows). `promptFavorite` is only for Panic's Prompt app; other terminals use the copyable connection string. See the README terminal matrix.",
+    "sshHost": "user@your-mac.your-tailnet.ts.net",
+    "transport": "mosh",
+    "moshServerPath": "/opt/homebrew/bin/mosh-server",
+    "promptFavorite": "switchboard"
+  },
+
+  "policy": {
+    "$comment": "Overrides for the default permission matrix (keys are action names like write_outside_workdir, delete, network_egress → allow|deny|ask) and a global egress allowlist applied to all sessions.",
+    "overrides": {},
+    "egressAllowlist": []
+  },
+
+  "ironcurtain": {
+    "$comment": "OPTIONAL, EXPERIMENTAL Docker-sandboxed execution backend (provos/IronCurtain). Leave enabled:false unless you have IronCurtain + Docker installed. MUST run on node@24 — node 26 SILENTLY disables the V8 sandbox (security-critical). See docs/IRONCURTAIN.md before enabling.",
+    "enabled": false,
+    "nodePath": "/opt/homebrew/opt/node@24/bin/node",
+    "binPath": "/opt/homebrew/bin/ironcurtain",
+    "webPort": 7400,
+    "stateFile": "~/.ironcurtain/web-ui.json",
+    "personasDir": "~/.ironcurtain/personas",
+    "defaultPersona": "vuln-discovery",
+    "maxWebSessions": 5
+  },
+
+  "assets": {
+    "$comment": "Named template/asset paths your deliverable tasks reference, by short name → path.",
+    "deckTemplate": "~/path/to/deck-template.pptx",
+    "iconLibrary": "~/path/to/icons"
+  },
+
+  "repos": {
+    "$comment": "Short name → absolute path for repos you launch interactive sessions in.",
+    "myproject": "~/path/to/myproject"
+  },
+
+  "$comment_codeRoots": "Roots searched (2 levels deep) to resolve a project by name when it isn't listed in `repos`.",
+  "codeRoots": ["~/path/to/code"],
+
+  "paths": {
+    "$comment": "Named output paths. driveOutput is a synced cloud folder for deliverables (writing there = ask).",
+    "driveOutput": "~/path/to/synced/Presentations"
+  }
+}

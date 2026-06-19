@@ -1,0 +1,7 @@
+{
+  "name": "vuln-discovery",
+  "description": "Read-only security recon & triage analyst — sandboxed CVE/advisory/dependency analysis. Reads code and fetches curated security sources freely; filesystem writes outside the workspace and any off-allowlist network reach a human for approval.",
+  "createdAt": "2026-06-17T00:00:00.000Z",
+  "servers": ["filesystem", "fetch", "git"],
+  "memory": { "enabled": true }
+}

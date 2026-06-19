@@ -1,0 +1,17 @@
+{
+  "name": "spike1-canusetool",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "typecheck": "tsc --noEmit",
+    "probe": "tsx probe.ts"
+  },
+  "dependencies": {
+    "@anthropic-ai/claude-agent-sdk": "*"
+  },
+  "devDependencies": {
+    "typescript": "*",
+    "tsx": "*",
+    "@types/node": "*"
+  }
+}
